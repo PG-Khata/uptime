@@ -1,0 +1,52 @@
+name: Keep Server Alive & Uptime Monitor
+
+on:
+  schedule:
+    # Runs every 10 minutes, 24/7
+    - cron: '*/10 * * * *'
+  workflow_dispatch: # Allows manual trigger from Actions tab
+
+permissions:
+  contents: write
+
+jobs:
+  ping:
+    name: Ping Endpoint & Check Uptime
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Run Health Check & Monitor
+        env:
+          # Resend API Credentials
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          RESEND_FROM_EMAIL: ${{ secrets.RESEND_FROM_EMAIL || 'PGKhata <no-reply@pgkhata.com>' }}
+
+          # Optional SMTP Fallback
+          SMTP_HOST: ${{ secrets.SMTP_HOST || 'smtp.gmail.com' }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT || '465' }}
+          SMTP_SECURE: ${{ secrets.SMTP_SECURE || 'true' }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          SMTP_FROM: ${{ secrets.SMTP_FROM }}
+
+          # Optional Webhook
+          WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
+        run: node monitor.js
+
+      - name: Commit Status Log
+        if: always()
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: update uptime status [skip ci]"
+          file_pattern: "status.json"

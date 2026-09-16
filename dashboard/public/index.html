@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Uptime Monitor & Keep-Alive Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eff6ff',
+              500: '#3b82f6',
+              600: '#2563eb',
+              700: '#1d4ed8',
+            },
+            surface: {
+              DEFAULT: '#0f172a',
+              card: '#1e293b',
+              border: '#334155'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @keyframes pulse-slow {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.7; transform: scale(1.05); }
+    }
+    .status-pulse {
+      animation: pulse-slow 2s infinite ease-in-out;
+    }
+  </style>
+</head>
+<body class="bg-[#0b0f19] text-slate-100 min-h-screen font-sans antialiased">
+  <!-- Toast Notification Container -->
+  <div id="toastContainer" class="fixed top-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- Header -->
+  <header class="border-b border-surface-border bg-surface-card/60 backdrop-blur-md sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-blue-400 text-lg shadow-inner">
+          <i class="fa-solid fa-heart-pulse"></i>
+        </div>
+        <div>
+          <h1 class="text-lg font-bold tracking-tight text-white flex items-center gap-2">
+            Uptime Pulse
+            <span class="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20">v1.0</span>
+          </h1>
+          <p class="text-xs text-slate-400">Keep-Alive Monitor & Alert Center</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <div class="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-800/80 border border-slate-700/60 text-xs text-slate-300">
+          <i class="fa-regular fa-clock text-slate-400"></i>
+          <span id="currentTimeDisplay">--:--:--</span>
+          <span id="timezoneBadge" class="text-slate-500 text-[10px] font-mono">Asia/Kolkata</span>
+        </div>
+
+        <button id="btnPingNow" onclick="triggerPingNow()" class="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/20 transition-all active:scale-95">
+          <i id="pingIcon" class="fa-solid fa-bolt"></i>
+          <span>Ping Now</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+
+    <!-- Hero Status Overview -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <!-- Status Card -->
+      <div class="bg-surface-card border border-surface-border rounded-xl p-5 shadow-sm relative overflow-hidden flex flex-col justify-between">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Server Health</span>
+          <div id="statusDot" class="w-3 h-3 rounded-full bg-slate-500 status-pulse"></div>
+        </div>
+        <div class="mt-3">
+          <div id="statusText" class="text-2xl font-black tracking-tight text-white">CHECKING...</div>
+          <div id="statusMessage" class="text-xs text-slate-400 mt-1 truncate">Connecting to monitor...</div>
+        </div>
+      </div>
+
+      <!-- Latency Card -->
+      <div class="bg-surface-card border border-surface-border rounded-xl p-5 shadow-sm flex flex-col justify-between">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Last Latency</span>
+          <i class="fa-solid fa-gauge-high text-slate-500 text-sm"></i>
+        </div>
+        <div class="mt-3">
+          <div class="flex items-baseline gap-1">
+            <span id="latencyText" class="text-2xl font-black text-white">--</span>
+            <span class="text-xs text-slate-400 font-medium">ms</span>
+          </div>
+          <div id="lastCheckedText" class="text-xs text-slate-400 mt-1">Last checked: Never</div>
+        </div>
+      </div>
+
+      <!-- Quiet Hours State -->
+      <div class="bg-surface-card border border-surface-border rounded-xl p-5 shadow-sm flex flex-col justify-between">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Quiet Hours (Sleep)</span>
+          <i class="fa-solid fa-moon text-indigo-400 text-sm"></i>
+        </div>
+        <div class="mt-3">
+          <div id="quietStateText" class="text-2xl font-black text-indigo-400">ACTIVE</div>
+          <div id="quietHoursRange" class="text-xs text-slate-400 mt-1">Schedule: 1 AM - 5 AM</div>
+        </div>
+      </div>
+
+      <!-- Pings Stats -->
+      <div class="bg-surface-card border border-surface-border rounded-xl p-5 shadow-sm flex flex-col justify-between">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Pings Today</span>
+          <i class="fa-solid fa-chart-simple text-slate-500 text-sm"></i>
+        </div>
+        <div class="mt-3">
+          <div class="flex items-baseline gap-2">
+            <span id="totalPingsText" class="text-2xl font-black text-white">0</span>
+            <span id="successRateText" class="text-xs text-emerald-400 font-semibold">(100% Success)</span>
+          </div>
+          <div id="statsBreakdown" class="text-xs text-slate-400 mt-1">0 Success · 0 Failed · 0 Skipped</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Configuration Form & Settings -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      
+      <!-- Left 2 Cols: Main Settings Form -->
+      <div class="lg:col-span-2 space-y-6">
+        <div class="bg-surface-card border border-surface-border rounded-xl p-6 shadow-sm">
+          <div class="flex items-center justify-between pb-5 border-b border-surface-border">
+            <div>
+              <h2 class="text-base font-bold text-white flex items-center gap-2">
+                <i class="fa-solid fa-sliders text-blue-400"></i>
+                Monitor Settings
+              </h2>
+              <p class="text-xs text-slate-400 mt-0.5">Customize health endpoint, schedule, and sleep window</p>
+            </div>
+            <button onclick="saveConfiguration()" class="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white transition-all shadow-md shadow-emerald-600/20">
+              <i class="fa-solid fa-floppy-disk"></i>
+              Save Config
+            </button>
+          </div>
+
+          <form id="configForm" onsubmit="event.preventDefault(); saveConfiguration();" class="mt-6 space-y-6">
+            
+            <!-- Endpoint URL -->
+            <div>
+              <label class="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-2">
+                Target Endpoint URL <span class="text-red-400">*</span>
+              </label>
+              <div class="relative">
+                <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
+                  <i class="fa-solid fa-link text-xs"></i>
+                </div>
+                <input type="url" id="endpointUrl" required placeholder="https://api.pgkhata.com/health" class="w-full bg-slate-900 border border-slate-700 rounded-lg pl-10 pr-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors">
+              </div>
+              <p class="text-[11px] text-slate-400 mt-1.5">The health URL that Render exposes. Pinging this resets Render's 15-minute sleep timer.</p>
+            </div>
+
+            <!-- Interval & Timeout -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-2">
+                  Ping Interval (Minutes)
+                </label>
+                <div class="relative">
+                  <input type="number" id="intervalMinutes" min="1" max="60" value="10" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500">
+                  <span class="absolute inset-y-0 right-3.5 flex items-center text-xs text-slate-500 pointer-events-none">min</span>
+                </div>
+                <p class="text-[11px] text-slate-400 mt-1.5">Recommended: 10 mins (Render sleeps after 15m).</p>
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-2">
+                  Request Timeout (Seconds)
+                </label>
+                <div class="relative">
+                  <input type="number" id="timeoutSeconds" min="5" max="120" value="60" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500">
+                  <span class="absolute inset-y-0 right-3.5 flex items-center text-xs text-slate-500 pointer-events-none">sec</span>
+                </div>
+                <p class="text-[11px] text-slate-400 mt-1.5">Recommended: 60s to allow Render cold start.</p>
+              </div>
+            </div>
+
+            <!-- Timezone & Quiet Hours Section -->
+            <div class="pt-4 border-t border-surface-border">
+              <div class="flex items-center justify-between mb-4">
+                <div>
+                  <h3 class="text-sm font-semibold text-white flex items-center gap-2">
+                    <i class="fa-regular fa-moon text-indigo-400"></i>
+                    Quiet Hours (Allow Server Sleep)
+                  </h3>
+                  <p class="text-xs text-slate-400">Pings are skipped during this window to let Render sleep.</p>
+                </div>
+                <label class="relative inline-flex items-center cursor-pointer">
+                  <input type="checkbox" id="quietHoursEnabled" class="sr-only peer" checked>
+                  <div class="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                </label>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label class="block text-xs text-slate-300 mb-1.5 font-medium">Timezone</label>
+                  <select id="timezoneSelect" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500">
+                    <option value="Asia/Kolkata">Asia/Kolkata (IST +5:30)</option>
+                    <option value="UTC">UTC (+00:00)</option>
+                    <option value="America/New_York">America/New_York (EST)</option>
+                    <option value="America/Los_Angeles">America/Los_Angeles (PST)</option>
+                    <option value="Europe/London">Europe/London (GMT)</option>
+                    <option value="Asia/Dubai">Asia/Dubai (+04:00)</option>
+                    <option value="Asia/Singapore">Asia/Singapore (+08:00)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label class="block text-xs text-slate-300 mb-1.5 font-medium">Sleep Start (Hour)</label>
+                  <select id="quietStartSelect" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500">
+                    <!-- Populated via JS -->
+                  </select>
+                </div>
+
+                <div>
+                  <label class="block text-xs text-slate-300 mb-1.5 font-medium">Wakeup End (Hour)</label>
+                  <select id="quietEndSelect" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500">
+                    <!-- Populated via JS -->
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <!-- Notification Settings -->
+            <div class="pt-4 border-t border-surface-border space-y-4">
+              <h3 class="text-sm font-semibold text-white flex items-center gap-2">
+                <i class="fa-solid fa-bell text-amber-400"></i>
+                Alert Notifications (On Server Downtime)
+              </h3>
+
+              <!-- Email Alert -->
+              <div class="bg-slate-900/60 border border-slate-800 rounded-lg p-4 space-y-3">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-envelope text-blue-400 text-sm"></i>
+                    <span class="text-xs font-semibold text-white">Email Alert</span>
+                  </div>
+                  <input type="checkbox" id="emailAlertEnabled" class="w-4 h-4 rounded text-blue-600 bg-slate-800 border-slate-700 focus:ring-0">
+                </div>
+                <div>
+                  <label class="block text-[11px] text-slate-400 mb-1">Send alert to email:</label>
+                  <input type="email" id="emailRecipient" placeholder="your-email@gmail.com" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500">
+                </div>
+              </div>
+
+              <!-- Webhook Alert -->
+              <div class="bg-slate-900/60 border border-slate-800 rounded-lg p-4 space-y-3">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2">
+                    <i class="fa-brands fa-discord text-indigo-400 text-sm"></i>
+                    <span class="text-xs font-semibold text-white">Discord / Slack Webhook</span>
+                  </div>
+                  <input type="checkbox" id="webhookAlertEnabled" class="w-4 h-4 rounded text-blue-600 bg-slate-800 border-slate-700 focus:ring-0">
+                </div>
+                <div>
+                  <label class="block text-[11px] text-slate-400 mb-1">Webhook URL:</label>
+                  <input type="url" id="webhookUrl" placeholder="https://discord.com/api/webhooks/..." class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500">
+                </div>
+              </div>
+            </div>
+
+          </form>
+        </div>
+      </div>
+
+      <!-- Right 1 Col: SMTP Secrets Setup & Quick Actions -->
+      <div class="space-y-6">
+        
+        <!-- Quick Actions & Alert Tester -->
+        <div class="bg-surface-card border border-surface-border rounded-xl p-6 shadow-sm space-y-4">
+          <h3 class="text-sm font-bold text-white flex items-center gap-2">
+            <i class="fa-solid fa-flask text-emerald-400"></i>
+            Diagnostic Tools
+          </h3>
+          <p class="text-xs text-slate-400">Test connections right now to confirm your email & endpoint settings work.</p>
+
+          <div class="space-y-3 pt-2">
+            <button onclick="triggerPingNow()" class="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold text-white transition-all">
+              <i class="fa-solid fa-arrows-rotate text-blue-400"></i>
+              Test Ping Target Now
+            </button>
+
+            <button onclick="sendTestAlert()" class="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold text-white transition-all">
+              <i class="fa-solid fa-paper-plane text-amber-400"></i>
+              Send Test Alert (Email / Webhook)
+            </button>
+          </div>
+        </div>
+
+        <!-- Email Provider Setup Drawer -->
+        <div class="bg-surface-card border border-surface-border rounded-xl p-6 shadow-sm space-y-4">
+          <div class="flex items-center justify-between">
+            <h3 class="text-sm font-bold text-white flex items-center gap-2">
+              <i class="fa-solid fa-paper-plane text-yellow-400"></i>
+              Email Delivery Service
+            </h3>
+            <span id="emailServiceBadge" class="text-[10px] px-2 py-0.5 rounded font-mono bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Resend Active</span>
+          </div>
+
+          <div id="resendInfoBox" class="p-3 bg-blue-950/40 border border-blue-800/50 rounded-lg text-xs text-blue-200 space-y-1">
+            <div class="flex items-center gap-1.5 font-semibold text-blue-300">
+              <i class="fa-solid fa-circle-check text-emerald-400"></i>
+              Resend API Connected
+            </div>
+            <p class="text-[11px] text-slate-300">Sender: <span class="font-mono text-emerald-400" id="resendFromDisplay">PGKhata &lt;no-reply@pgkhata.com&gt;</span></p>
+            <p class="text-[11px] text-slate-400">Emails will be delivered through Resend API automatically.</p>
+          </div>
+
+          <details class="text-xs text-slate-400">
+            <summary class="cursor-pointer text-slate-400 hover:text-slate-300 transition-colors font-medium text-[11px]">
+              ▶ Configure SMTP / Gmail (Alternative)
+            </summary>
+            <div class="mt-3 space-y-3">
+              <div>
+                <label class="block text-[11px] text-slate-400 mb-1">Sender Gmail (SMTP_USER)</label>
+                <input type="email" id="smtpUser" placeholder="your-email@gmail.com" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500">
+              </div>
+
+              <div>
+                <label class="block text-[11px] text-slate-400 mb-1">Gmail App Password (16 chars)</label>
+                <input type="password" id="smtpPass" placeholder="•••• •••• •••• ••••" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500">
+              </div>
+
+              <button onclick="saveSmtpCredentials()" class="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-semibold transition-all">
+                Save SMTP Credentials (.env)
+              </button>
+            </div>
+          </details>
+        </div>
+
+
+      </div>
+
+    </div>
+
+    <!-- Ping History & Activity Log -->
+    <div class="bg-surface-card border border-surface-border rounded-xl p-6 shadow-sm">
+      <div class="flex items-center justify-between pb-4 border-b border-surface-border">
+        <div>
+          <h2 class="text-base font-bold text-white flex items-center gap-2">
+            <i class="fa-solid fa-list-check text-slate-400"></i>
+            Recent Ping History
+          </h2>
+          <p class="text-xs text-slate-400 mt-0.5">Real-time log of the last health checks and sleep cycles</p>
+        </div>
+        <button onclick="fetchStatus()" class="text-xs text-slate-400 hover:text-white flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 transition-colors">
+          <i class="fa-solid fa-arrows-rotate"></i>
+          Refresh Logs
+        </button>
+      </div>
+
+      <div class="mt-4 overflow-x-auto">
+        <table class="w-full text-left text-xs">
+          <thead class="bg-slate-900/60 text-slate-400 uppercase font-semibold text-[10px] tracking-wider border-b border-surface-border">
+            <tr>
+              <th class="py-3 px-4">Time</th>
+              <th class="py-3 px-4">Status</th>
+              <th class="py-3 px-4">HTTP Code</th>
+              <th class="py-3 px-4">Latency</th>
+              <th class="py-3 px-4">Details / Message</th>
+            </tr>
+          </thead>
+          <tbody id="historyTableBody" class="divide-y divide-surface-border">
+            <tr>
+              <td colspan="5" class="py-6 text-center text-slate-500">Loading ping history...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    // Initialize Hours Dropdown
+    function initHourDropdowns() {
+      const startSelect = document.getElementById('quietStartSelect');
+      const endSelect = document.getElementById('quietEndSelect');
+      startSelect.innerHTML = '';
+      endSelect.innerHTML = '';
+
+      for (let i = 0; i < 24; i++) {
+        const period = i >= 12 ? 'PM' : 'AM';
+        const display12 = i % 12 === 0 ? 12 : i % 12;
+        const text = `${String(i).padStart(2, '0')}:00 (${display12} ${period})`;
+
+        startSelect.innerHTML += `<option value="${i}">${text}</option>`;
+        endSelect.innerHTML += `<option value="${i}">${text}</option>`;
+      }
+    }
+    initHourDropdowns();
+
+    // Toast Alert
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      
+      const colors = {
+        success: 'bg-emerald-600 text-white border-emerald-500',
+        error: 'bg-red-600 text-white border-red-500',
+        info: 'bg-blue-600 text-white border-blue-500'
+      };
+
+      toast.className = `px-4 py-3 rounded-xl shadow-xl border text-xs font-semibold flex items-center gap-2 pointer-events-auto transition-all transform duration-300 translate-y-2 opacity-0 ${colors[type] || colors.info}`;
+      toast.innerHTML = `
+        <i class="fa-solid ${type === 'success' ? 'fa-circle-check' : type === 'error' ? 'fa-triangle-exclamation' : 'fa-circle-info'}"></i>
+        <span>${message}</span>
+      `;
+
+      container.appendChild(toast);
+      requestAnimationFrame(() => {
+        toast.classList.remove('translate-y-2', 'opacity-0');
+      });
+
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-2');
+        setTimeout(() => toast.remove(), 300);
+      }, 4000);
+    }
+
+    // Live Clock Display
+    function updateClock(tz) {
+      try {
+        const now = new Date();
+        const timeStr = now.toLocaleTimeString('en-US', { timeZone: tz || 'Asia/Kolkata', hour12: false });
+        document.getElementById('currentTimeDisplay').textContent = timeStr;
+      } catch (e) {}
+    }
+
+    let activeConfig = null;
+
+    // Fetch Config from API
+    async function fetchConfig() {
+      try {
+        const res = await fetch('/api/config');
+        const data = await res.json();
+        activeConfig = data.config;
+
+        // Populate Form
+        document.getElementById('endpointUrl').value = activeConfig.endpoint || '';
+        document.getElementById('intervalMinutes').value = activeConfig.interval_minutes || 10;
+        document.getElementById('timeoutSeconds').value = (activeConfig.timeout_ms || 60000) / 1000;
+        document.getElementById('timezoneSelect').value = activeConfig.timezone || 'Asia/Kolkata';
+        document.getElementById('timezoneBadge').textContent = activeConfig.timezone || 'Asia/Kolkata';
+
+        // Quiet hours
+        const q = activeConfig.quiet_hours || { enabled: true, start: 1, end: 5 };
+        document.getElementById('quietHoursEnabled').checked = !!q.enabled;
+        document.getElementById('quietStartSelect').value = q.start !== undefined ? q.start : 1;
+        document.getElementById('quietEndSelect').value = q.end !== undefined ? q.end : 5;
+
+        // Notifications
+        const notif = activeConfig.notifications || {};
+        document.getElementById('emailAlertEnabled').checked = !!notif.email?.enabled;
+        document.getElementById('emailRecipient').value = notif.email?.to || '';
+        document.getElementById('webhookAlertEnabled').checked = !!notif.webhook?.enabled;
+        document.getElementById('webhookUrl').value = notif.webhook?.url || '';
+
+        // Email Service Badge
+        const emailServiceBadge = document.getElementById('emailServiceBadge');
+        const resendBox = document.getElementById('resendInfoBox');
+        if (data.env.resend_configured) {
+          emailServiceBadge.textContent = 'Resend Active';
+          emailServiceBadge.className = 'text-[10px] px-2 py-0.5 rounded font-mono bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
+          if (resendBox) resendBox.style.display = 'block';
+          const fromEl = document.getElementById('resendFromDisplay');
+          if (fromEl) fromEl.textContent = data.env.resend_from;
+        } else if (data.env.smtp_configured) {
+          emailServiceBadge.textContent = `SMTP Active (${data.env.smtp_user || 'Gmail'})`;
+          emailServiceBadge.className = 'text-[10px] px-2 py-0.5 rounded font-mono bg-blue-500/20 text-blue-400 border border-blue-500/30';
+          if (resendBox) resendBox.style.display = 'none';
+        } else {
+          emailServiceBadge.textContent = 'Not Configured';
+          emailServiceBadge.className = 'text-[10px] px-2 py-0.5 rounded font-mono bg-red-500/20 text-red-400 border border-red-500/30';
+          if (resendBox) resendBox.style.display = 'none';
+        }
+
+      } catch (err) {
+        showToast('Failed to fetch config: ' + err.message, 'error');
+      }
+    }
+
+    // Fetch Status & History
+    async function fetchStatus() {
+      try {
+        const res = await fetch('/api/status');
+        const { status, quiet_info } = await res.json();
+
+        // Status Card Update
+        const dot = document.getElementById('statusDot');
+        const text = document.getElementById('statusText');
+        const msg = document.getElementById('statusMessage');
+
+        if (status.current_status === 'UP') {
+          dot.className = 'w-3 h-3 rounded-full bg-emerald-400 status-pulse shadow-lg shadow-emerald-500/50';
+          text.textContent = 'HEALTHY / UP';
+          text.className = 'text-2xl font-black tracking-tight text-emerald-400';
+        } else if (status.current_status === 'DOWN') {
+          dot.className = 'w-3 h-3 rounded-full bg-red-500 status-pulse shadow-lg shadow-red-500/50';
+          text.textContent = 'SERVER DOWN';
+          text.className = 'text-2xl font-black tracking-tight text-red-500';
+        } else if (status.current_status === 'SLEEPING') {
+          dot.className = 'w-3 h-3 rounded-full bg-indigo-400 status-pulse shadow-lg shadow-indigo-500/50';
+          text.textContent = 'SLEEPING';
+          text.className = 'text-2xl font-black tracking-tight text-indigo-400';
+        } else {
+          dot.className = 'w-3 h-3 rounded-full bg-slate-500';
+          text.textContent = status.current_status || 'IDLE';
+          text.className = 'text-2xl font-black tracking-tight text-slate-300';
+        }
+        msg.textContent = status.last_message || 'No checks recorded yet';
+
+        // Latency
+        document.getElementById('latencyText').textContent = status.last_latency_ms !== null ? status.last_latency_ms : '--';
+        document.getElementById('lastCheckedText').textContent = status.last_checked ? `Last: ${new Date(status.last_checked).toLocaleTimeString()}` : 'Last: Never';
+
+        // Quiet Hours state
+        const quietStateText = document.getElementById('quietStateText');
+        const quietHoursRange = document.getElementById('quietHoursRange');
+        if (quiet_info?.isQuiet) {
+          quietStateText.textContent = 'IN QUIET PERIOD';
+          quietStateText.className = 'text-2xl font-black text-indigo-400';
+        } else {
+          quietStateText.textContent = 'MONITORING';
+          quietStateText.className = 'text-2xl font-black text-emerald-400';
+        }
+
+        if (activeConfig?.quiet_hours?.enabled) {
+          quietHoursRange.textContent = `Sleep: ${activeConfig.quiet_hours.start}:00 to ${activeConfig.quiet_hours.end}:00`;
+        } else {
+          quietHoursRange.textContent = 'Sleep mode disabled (24/7)';
+        }
+
+        // Stats
+        const st = status.stats || { total_pings: 0, successful_pings: 0, failed_pings: 0, skipped_quiet_hours: 0 };
+        document.getElementById('totalPingsText').textContent = st.total_pings;
+        const rate = st.total_pings > 0 ? Math.round((st.successful_pings / st.total_pings) * 100) : 100;
+        document.getElementById('successRateText').textContent = `(${rate}% Success)`;
+        document.getElementById('statsBreakdown').textContent = `${st.successful_pings} Up · ${st.failed_pings} Down · ${st.skipped_quiet_hours} Quiet`;
+
+        // Render History Table
+        renderHistoryTable(status.history || []);
+
+      } catch (err) {
+        console.error('Status fetch error:', err);
+      }
+    }
+
+    // Render History Rows
+    function renderHistoryTable(history) {
+      const tbody = document.getElementById('historyTableBody');
+      if (!history || history.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="py-6 text-center text-slate-500">No pings recorded yet. Click "Ping Now" above to run your first check.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = history.map(item => {
+        let badge = '';
+        if (item.status === 'UP') {
+          badge = `<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">UP</span>`;
+        } else if (item.status === 'DOWN') {
+          badge = `<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-red-500/10 text-red-400 border border-red-500/20">DOWN</span>`;
+        } else if (item.status === 'SLEEPING') {
+          badge = `<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">SLEEPING</span>`;
+        } else {
+          badge = `<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-700 text-slate-300">${item.status}</span>`;
+        }
+
+        const dateStr = new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        const latency = item.latencyMs !== null ? `${item.latencyMs} ms` : '-';
+        const code = item.statusCode ? `<span class="font-mono text-slate-300 font-semibold">${item.statusCode}</span>` : '<span class="text-slate-500">-</span>';
+
+        return `
+          <tr class="hover:bg-slate-800/40 transition-colors">
+            <td class="py-3 px-4 font-mono text-slate-400">${dateStr}</td>
+            <td class="py-3 px-4">${badge}</td>
+            <td class="py-3 px-4">${code}</td>
+            <td class="py-3 px-4 text-slate-300 font-mono">${latency}</td>
+            <td class="py-3 px-4 text-slate-400 max-w-md truncate" title="${item.message}">${item.message}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    // Save Configuration
+    async function saveConfiguration() {
+      const endpoint = document.getElementById('endpointUrl').value.trim();
+      const interval_minutes = parseInt(document.getElementById('intervalMinutes').value, 10) || 10;
+      const timeout_ms = (parseInt(document.getElementById('timeoutSeconds').value, 10) || 60) * 1000;
+      const timezone = document.getElementById('timezoneSelect').value;
+      const quietEnabled = document.getElementById('quietHoursEnabled').checked;
+      const quietStart = parseInt(document.getElementById('quietStartSelect').value, 10);
+      const quietEnd = parseInt(document.getElementById('quietEndSelect').value, 10);
+
+      const emailEnabled = document.getElementById('emailAlertEnabled').checked;
+      const emailTo = document.getElementById('emailRecipient').value.trim();
+
+      const webhookEnabled = document.getElementById('webhookAlertEnabled').checked;
+      const webhookUrl = document.getElementById('webhookUrl').value.trim();
+
+      const newConfig = {
+        endpoint,
+        interval_minutes,
+        timeout_ms,
+        quiet_hours: {
+          enabled: quietEnabled,
+          start: quietStart,
+          end: quietEnd
+        },
+        timezone,
+        notifications: {
+          email: {
+            enabled: emailEnabled,
+            to: emailTo
+          },
+          webhook: {
+            enabled: webhookEnabled,
+            url: webhookUrl
+          }
+        }
+      };
+
+      try {
+        const res = await fetch('/api/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(newConfig)
+        });
+
+        if (!res.ok) throw new Error('Save failed');
+        showToast('Configuration saved successfully!', 'success');
+        await fetchConfig();
+        await fetchStatus();
+      } catch (err) {
+        showToast('Error saving configuration: ' + err.message, 'error');
+      }
+    }
+
+    // Save SMTP credentials
+    async function saveSmtpCredentials() {
+      const smtp_user = document.getElementById('smtpUser').value.trim();
+      const smtp_pass = document.getElementById('smtpPass').value.trim();
+      if (!smtp_user || !smtp_pass) {
+        showToast('Please enter both Gmail address and App Password.', 'error');
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/env', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            smtp_user,
+            smtp_pass,
+            smtp_host: 'smtp.gmail.com',
+            smtp_port: '465'
+          })
+        });
+
+        if (!res.ok) throw new Error('Failed to update credentials');
+        showToast('SMTP credentials saved securely in .env!', 'success');
+        document.getElementById('smtpPass').value = '';
+        await fetchConfig();
+      } catch (err) {
+        showToast('Error: ' + err.message, 'error');
+      }
+    }
+
+    // Ping Now Action
+    async function triggerPingNow() {
+      const btn = document.getElementById('btnPingNow');
+      const icon = document.getElementById('pingIcon');
+      btn.disabled = true;
+      icon.className = 'fa-solid fa-spinner fa-spin';
+
+      showToast('Pinging target endpoint...', 'info');
+
+      try {
+        const res = await fetch('/api/ping', { method: 'POST' });
+        const data = await res.json();
+        
+        if (data.result.status === 'UP') {
+          showToast(`Success! Endpoint is UP (${data.result.latencyMs}ms)`, 'success');
+        } else {
+          showToast(`Warning: Endpoint returned ${data.result.status}`, 'error');
+        }
+        await fetchStatus();
+      } catch (err) {
+        showToast('Ping failed: ' + err.message, 'error');
+      } finally {
+        btn.disabled = false;
+        icon.className = 'fa-solid fa-bolt';
+      }
+    }
+
+    // Send Test Alert
+    async function sendTestAlert() {
+      const email_to = document.getElementById('emailRecipient').value.trim();
+      const webhook_url = document.getElementById('webhookUrl').value.trim();
+
+      if (!email_to && !webhook_url) {
+        showToast('Please provide an email recipient or webhook URL first.', 'error');
+        return;
+      }
+
+      showToast('Dispatching test alert...', 'info');
+
+      try {
+        const res = await fetch('/api/test-alert', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email_to, webhook_url })
+        });
+
+        const data = await res.json();
+        if (data.results?.email?.success) {
+          showToast('Test email sent successfully! Check your inbox.', 'success');
+        } else if (data.results?.email?.error) {
+          showToast('Email failed: ' + data.results.email.error, 'error');
+        }
+
+        if (data.results?.webhook?.success) {
+          showToast('Test webhook delivered successfully!', 'success');
+        }
+      } catch (err) {
+        showToast('Test alert failed: ' + err.message, 'error');
+      }
+    }
+
+    // Init App
+    (async () => {
+      await fetchConfig();
+      await fetchStatus();
+      setInterval(() => updateClock(activeConfig?.timezone), 1000);
+      // Auto-refresh status every 10 seconds
+      setInterval(fetchStatus, 10000);
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,36 @@
+{
+  "current_status": "UP",
+  "last_checked": "2026-09-16T19:40:05.310Z",
+  "last_status_code": 200,
+  "last_latency_ms": 390,
+  "last_message": "Healthy - HTTP 200 in 390ms",
+  "stats": {
+    "total_pings": 3,
+    "successful_pings": 2,
+    "failed_pings": 1,
+    "skipped_quiet_hours": 0
+  },
+  "history": [
+    {
+      "timestamp": "2026-09-16T19:40:05.310Z",
+      "status": "UP",
+      "statusCode": 200,
+      "latencyMs": 390,
+      "message": "Healthy - HTTP 200 in 390ms"
+    },
+    {
+      "timestamp": "2026-09-16T19:34:55.982Z",
+      "status": "UP",
+      "statusCode": 200,
+      "latencyMs": 357,
+      "message": "Healthy - HTTP 200 in 357ms"
+    },
+    {
+      "timestamp": "2026-09-16T19:31:08.693Z",
+      "status": "DOWN",
+      "statusCode": null,
+      "latencyMs": 10012,
+      "message": "Down / Failed: Request timed out after 10000ms"
+    }
+  ]
+}

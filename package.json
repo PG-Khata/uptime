@@ -1,0 +1,29 @@
+{
+  "name": "uptime-monitor",
+  "version": "1.0.0",
+  "description": "24/7 Uptime Monitor for Render with Quiet Hours, Email/Webhook Alerts, and Visual Dashboard",
+  "main": "monitor.js",
+  "type": "module",
+  "scripts": {
+    "start": "node dashboard/server.js",
+    "dashboard": "node dashboard/server.js",
+    "monitor": "node monitor.js",
+    "test-ping": "node monitor.js --test",
+    "test-alert": "node monitor.js --test-alert"
+  },
+  "keywords": [
+    "uptime",
+    "monitor",
+    "render",
+    "cron",
+    "healthcheck",
+    "dashboard"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "nodemailer": "^6.10.0"
+  }
+}

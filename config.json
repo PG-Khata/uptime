@@ -1,0 +1,21 @@
+{
+  "endpoint": "https://api.pgkhata.com/health",
+  "interval_minutes": 10,
+  "timeout_ms": 60000,
+  "quiet_hours": {
+    "enabled": true,
+    "start": 1,
+    "end": 5
+  },
+  "timezone": "Asia/Kolkata",
+  "notifications": {
+    "email": {
+      "enabled": true,
+      "to": "hey@mukundjha.dev"
+    },
+    "webhook": {
+      "enabled": false,
+      "url": ""
+    }
+  }
+}
