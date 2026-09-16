@@ -159,9 +159,13 @@ app.post('/api/test-alert', async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`====================================================`);
-  console.log(`🚀 Uptime Monitor Dashboard is running!`);
-  console.log(`🔗 Local URL: http://localhost:${PORT}`);
-  console.log(`====================================================`);
-});
+if (!process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`====================================================`);
+    console.log(`🚀 Uptime Monitor Dashboard is running!`);
+    console.log(`🔗 Local URL: http://localhost:${PORT}`);
+    console.log(`====================================================`);
+  });
+}
+
+export default app;
