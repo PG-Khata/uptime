@@ -113,10 +113,13 @@ app.get('/api/status', async (req, res) => {
   }
 });
 
-// 5. Trigger Immediate Ping
-app.post('/api/ping', async (req, res) => {
+// 5. Trigger Ping / Cron Check
+app.all(['/api/ping', '/api/cron'], async (req, res) => {
   try {
-    const result = await runCheck({ force: true });
+    // If force=true query param passed or direct POST to /api/ping without scheduled param -> force ping
+    const isCron = req.path === '/api/cron' || req.query.cron === 'true';
+    const force = isCron ? false : (req.query.force === 'true' || req.method === 'POST');
+    const result = await runCheck({ force });
     res.json({ success: true, result });
   } catch (err) {
     res.status(500).json({ error: err.message });
