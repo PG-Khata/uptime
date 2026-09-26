@@ -1,16 +1,23 @@
 {
   "current_status": "UP",
-  "last_checked": "2026-09-26T06:39:09.123Z",
+  "last_checked": "2026-09-26T11:49:08.630Z",
   "last_status_code": 200,
-  "last_latency_ms": 851,
-  "last_message": "Healthy - HTTP 200 in 851ms",
+  "last_latency_ms": 793,
+  "last_message": "Healthy - HTTP 200 in 793ms",
   "stats": {
-    "total_pings": 48,
-    "successful_pings": 45,
+    "total_pings": 49,
+    "successful_pings": 46,
     "failed_pings": 3,
     "skipped_quiet_hours": 16
   },
   "history": [
+    {
+      "timestamp": "2026-09-26T11:49:08.630Z",
+      "status": "UP",
+      "statusCode": 200,
+      "latencyMs": 793,
+      "message": "Healthy - HTTP 200 in 793ms"
+    },
     {
       "timestamp": "2026-09-26T06:39:09.123Z",
       "status": "UP",
@@ -353,13 +360,6 @@
       "statusCode": 502,
       "latencyMs": 950,
       "message": "Down / Failed: HTTP error status 502 (Bad Gateway)"
-    },
-    {
-      "timestamp": "2026-09-18T14:22:06.641Z",
-      "status": "UP",
-      "statusCode": 200,
-      "latencyMs": 805,
-      "message": "Healthy - HTTP 200 in 805ms"
     }
   ]
 }
