@@ -1,16 +1,23 @@
 {
   "current_status": "UP",
-  "last_checked": "2026-11-12T01:03:38.582Z",
+  "last_checked": "2026-11-12T08:15:04.267Z",
   "last_status_code": 200,
-  "last_latency_ms": 872,
-  "last_message": "Healthy - HTTP 200 in 872ms",
+  "last_latency_ms": 880,
+  "last_message": "Healthy - HTTP 200 in 880ms",
   "stats": {
-    "total_pings": 228,
-    "successful_pings": 225,
+    "total_pings": 229,
+    "successful_pings": 226,
     "failed_pings": 3,
     "skipped_quiet_hours": 69
   },
   "history": [
+    {
+      "timestamp": "2026-11-12T08:15:04.267Z",
+      "status": "UP",
+      "statusCode": 200,
+      "latencyMs": 880,
+      "message": "Healthy - HTTP 200 in 880ms"
+    },
     {
       "timestamp": "2026-11-12T01:03:38.582Z",
       "status": "UP",
@@ -353,13 +360,6 @@
       "statusCode": 200,
       "latencyMs": 879,
       "message": "Healthy - HTTP 200 in 879ms"
-    },
-    {
-      "timestamp": "2026-10-31T00:01:59.791Z",
-      "status": "UP",
-      "statusCode": 200,
-      "latencyMs": 785,
-      "message": "Healthy - HTTP 200 in 785ms"
     }
   ]
 }
