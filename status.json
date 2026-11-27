@@ -1,16 +1,23 @@
 {
   "current_status": "UP",
-  "last_checked": "2026-11-27T03:58:43.917Z",
+  "last_checked": "2026-11-27T13:43:06.869Z",
   "last_status_code": 200,
-  "last_latency_ms": 673,
-  "last_message": "Healthy - HTTP 200 in 673ms",
+  "last_latency_ms": 698,
+  "last_message": "Healthy - HTTP 200 in 698ms",
   "stats": {
-    "total_pings": 269,
-    "successful_pings": 266,
+    "total_pings": 270,
+    "successful_pings": 267,
     "failed_pings": 3,
     "skipped_quiet_hours": 79
   },
   "history": [
+    {
+      "timestamp": "2026-11-27T13:43:06.869Z",
+      "status": "UP",
+      "statusCode": 200,
+      "latencyMs": 698,
+      "message": "Healthy - HTTP 200 in 698ms"
+    },
     {
       "timestamp": "2026-11-27T03:58:43.917Z",
       "status": "UP",
@@ -353,13 +360,6 @@
       "statusCode": null,
       "latencyMs": null,
       "message": "Quiet hours active (4:00 Asia/Kolkata). Ping skipped to allow server sleep."
-    },
-    {
-      "timestamp": "2026-11-12T16:52:50.221Z",
-      "status": "UP",
-      "statusCode": 200,
-      "latencyMs": 799,
-      "message": "Healthy - HTTP 200 in 799ms"
     }
   ]
 }
